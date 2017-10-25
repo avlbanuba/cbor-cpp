@@ -447,12 +447,19 @@ void decoder::run()
                         }
                         break;
                     case 1: // negative integer
-                        if (minorType < 24)
-                        {
-                            _listener->on_integer(-minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _currentLength = sizeFromAdditionalInfo(minorType);
+                        if(minorType < 24) {
+                            _listener->on_integer(-1 -minorType);
+                        } else if(minorType == 24) { // 1 byte
+                            _currentLength = 1;
+                            _state = STATE_NINT;
+                        } else if(minorType == 25) { // 2 byte
+                            _currentLength = 2;
+                            _state = STATE_NINT;
+                        } else if(minorType == 26) { // 4 byte
+                            _currentLength = 4;
+                            _state = STATE_NINT;
+                        } else if(minorType == 27) { // 8 byte
+                            _currentLength = 8;
                             _state = STATE_NINT;
                         } else
                         {

@@ -106,7 +106,7 @@ void encoder::write_int(unsigned long long value) {
 
 void encoder::write_int(long long value) {
     if (value < 0) {
-        write_type_value(1, (unsigned long long) -value);
+        write_type_value(1, (unsigned long long) -(value+1));
     } else {
         write_type_value(0, (unsigned long long) value);
     }
@@ -114,7 +114,7 @@ void encoder::write_int(long long value) {
 
 void encoder::write_int(int value) {
     if (value < 0) {
-        write_type_value(1, (unsigned int) -value);
+        write_type_value(1, (unsigned int) -(value+1));
     } else {
         write_type_value(0, (unsigned int) value);
     }
