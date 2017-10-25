@@ -32,13 +32,13 @@ namespace cbor {
 
         virtual unsigned int size() const override;
 
-        virtual void put_byte(unsigned char value);
+        virtual void put_byte(unsigned char value) override;
 
-        virtual void put_bytes(const unsigned char *data, int size);
+        virtual void put_bytes(const unsigned char *data, int size) override;
 
         void clear();
 
-        std::string toString() const;
+        std::string toString() const override;
     };
 }
 

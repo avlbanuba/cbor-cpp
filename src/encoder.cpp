@@ -16,6 +16,13 @@
 
 #include "encoder.h"
 
+#define ENDIAN_OPT 0
+
+#if ENDIAN_OPT == 0
+#else
+#include "endian.h"
+#endif
+
 namespace cbor {
 
 
@@ -41,7 +48,7 @@ void encoder::write_type_value(int major_type, unsigned int value) {
         _out->put_byte((unsigned char) value);
     } else {
         _out->put_byte((unsigned char) (major_type | 26));
-#if 1
+#if ENDIAN_OPT == 0
         _out->put_byte((unsigned char) (value >> 24));
         _out->put_byte((unsigned char) (value >> 16));
         _out->put_byte((unsigned char) (value >> 8));
@@ -69,7 +76,7 @@ void encoder::write_type_value(int major_type, unsigned long long value) {
         _out->put_byte((unsigned char) value);
     } else if (value < 4294967296ULL) {
         _out->put_byte((unsigned char) (major_type | 26));
-#if 1
+#if ENDIAN_OPT == 0
         _out->put_byte((unsigned char) (value >> 24));
         _out->put_byte((unsigned char) (value >> 16));
         _out->put_byte((unsigned char) (value >> 8));
@@ -79,7 +86,7 @@ void encoder::write_type_value(int major_type, unsigned long long value) {
         _out->put_bytes((unsigned char*)&t, sizeof(t));
 #endif
     } else {
-#if 0
+#if ENDIAN_OPT == 0
         _out->put_byte((unsigned char) (major_type | 27));
         _out->put_byte((unsigned char) (value >> 56));
         _out->put_byte((unsigned char) (value >> 48));
@@ -179,7 +186,7 @@ void encoder::write_float(float value) {
     uint8_t major_type = (7 << 5);
     _out->put_byte(major_type | 26);
 
-#if 0
+#if ENDIAN_OPT == 0
     uint32_t *t = (uint32_t*)&value;
     _out->put_byte((unsigned char) (*t >> 24));
     _out->put_byte((unsigned char) (*t >> 16));
@@ -198,7 +205,7 @@ void encoder::write_double(double value) {
     _out->put_byte(major_type | 27);
 
 
-#if 0
+#if ENDIAN_OPT == 0
     uint64_t *t = (uint64_t*)&value;
     _out->put_byte( major_type | 27);
     _out->put_byte((unsigned char) (*t >> 56));

@@ -15,8 +15,6 @@
 	   limitations under the License.
 */
 
-#include <bits/types.h>
-#include <cstdint>
 #include "buffer.h"
 
 namespace cbor {
