@@ -82,13 +82,11 @@ int main() {
         }
     }
 
-    if (0)
     { // decoding
         cbor::input input(output.data(), output.size());
         cbor::listener_debug listener;
         cbor::decoder decoder(input, listener);
-        //decoder.run();
-        decoder.traverse();
+        decoder.run();
     }
 
     return 0;

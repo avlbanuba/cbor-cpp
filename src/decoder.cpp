@@ -87,351 +87,22 @@ int sizeFromAdditionalInfo(uint8_t in)
     throw std::runtime_error("invalid additional info: " + to_string(additionalInfo));
 }
 
-void decoder::traverse()
-{
-    while (1)
-    {
-        if (_state == STATE_TYPE)
-        {
-            if (_in->has_bytes(1))
-            {
-                unsigned char type = _in->get_byte();
-                unsigned char majorType = type >> 5;
-                unsigned char minorType = type & 0x1f;
-
-                switch (majorType)
-                {
-                    case 0: // positive integer
-                        if (minorType < 24)
-                        {
-                            //_listener->on_integer(minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                            _state = STATE_PINT;
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid integer type");
-                        }
-                        break;
-                    case 1: // negative integer
-                        if (minorType < 24)
-                        {
-                            //_listener->on_integer(-minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                            _state = STATE_NINT;
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid integer type");
-                        }
-                        break;
-                    case 2: // bytes
-                        if (minorType < 24)
-                        {
-                            _state = STATE_BYTES_DATA;
-                            _currentLength = minorType;
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                            _state = STATE_BYTES_SIZE;
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid bytes type");
-                        }
-                        break;
-                    case 3: // string
-                        if (minorType < 24)
-                        {
-                            _state = STATE_STRING_DATA;
-                            _currentLength = minorType;
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _state = STATE_STRING_SIZE;
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid string type");
-                        }
-                        break;
-                    case 4: // array
-                        if (minorType < 24)
-                        {
-                            //_listener->on_array(minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _state = STATE_ARRAY;
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid array type");
-                        }
-                        break;
-                    case 5: // map
-                        if (minorType < 24)
-                        {
-                            //_listener->on_map(minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _state = STATE_MAP;
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid array type");
-                        }
-                        break;
-                    case 6: // tag
-                        if (minorType < 24)
-                        {
-                            //_listener->on_tag(minorType);
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _state = STATE_TAG;
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid tag type");
-                        }
-                        break;
-                    case 7: // special
-                        if (minorType < 20)
-                        {
-                            //_listener->on_special(minorType);
-                        } else if (minorType == 20)
-                        {
-                            //_listener->on_bool(false);
-                        } else if (minorType == 21)
-                        {
-                            //_listener->on_bool(true);
-                        } else if (minorType == 22)
-                        {
-                            //_listener->on_null();
-                        } else if (minorType == 23)
-                        {
-                            //_listener->on_undefined();
-                        } else if (minorType >= 24 and minorType <= 27)
-                        {
-                            _state = STATE_SPECIAL;
-                            _currentLength = sizeFromAdditionalInfo(minorType);
-                        } else
-                        {
-                            _state = STATE_ERROR;
-                            //_listener->on_error("invalid special type");
-                        }
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_PINT)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                _in->advance(_currentLength);
-                _state = STATE_TYPE;
-            } else break;
-        } else if (_state == STATE_NINT)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                _in->advance(_currentLength);
-                _state = STATE_TYPE;
-            } else break;
-        } else if (_state == STATE_BYTES_SIZE)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _currentLength = _in->get_byte();
-                        _state = STATE_BYTES_DATA;
-                        break;
-                    case 2:
-                        _currentLength = _in->get_short();
-                        _state = STATE_BYTES_DATA;
-                        break;
-                    case 4:
-                        _currentLength = _in->get_int();
-                        _state = STATE_BYTES_DATA;
-                        break;
-                    case 8:
-                        _state = STATE_ERROR;
-                        _listener->on_error("extra long bytes");
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_BYTES_DATA)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                _in->advance(_currentLength);
-                _state = STATE_TYPE;
-                //_listener->on_bytes(data, _currentLength);
-            } else break;
-        } else if (_state == STATE_STRING_SIZE)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _currentLength = _in->get_byte();
-                        _state = STATE_STRING_DATA;
-                        break;
-                    case 2:
-                        _currentLength = _in->get_short();
-                        _state = STATE_STRING_DATA;
-                        break;
-                    case 4:
-                        _currentLength = _in->get_int();
-                        _state = STATE_STRING_DATA;
-                        break;
-                    case 8:
-                        _state = STATE_ERROR;
-                        _listener->on_error("extra long array");
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_STRING_DATA)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                unsigned char *data = new unsigned char[_currentLength];
-                _in->get_bytes(data, _currentLength);
-                _state = STATE_TYPE;
-                std::string str((const char *) data, (size_t) _currentLength);
-                _listener->on_string(str);
-            } else break;
-        } else if (_state == STATE_ARRAY)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _listener->on_array(_in->get_byte());
-                        _state = STATE_TYPE;
-                        break;
-                    case 2:
-                        _listener->on_array(_currentLength = _in->get_short());
-                        _state = STATE_TYPE;
-                        break;
-                    case 4:
-                        _listener->on_array(_in->get_int());
-                        _state = STATE_TYPE;
-                        break;
-                    case 8:
-                        _state = STATE_ERROR;
-                        _listener->on_error("extra long array");
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_MAP)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _listener->on_map(_in->get_byte());
-                        _state = STATE_TYPE;
-                        break;
-                    case 2:
-                        _listener->on_map(_currentLength = _in->get_short());
-                        _state = STATE_TYPE;
-                        break;
-                    case 4:
-                        _listener->on_map(_in->get_int());
-                        _state = STATE_TYPE;
-                        break;
-                    case 8:
-                        _state = STATE_ERROR;
-                        _listener->on_error("extra long map");
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_TAG)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _listener->on_tag(_in->get_byte());
-                        _state = STATE_TYPE;
-                        break;
-                    case 2:
-                        _listener->on_tag(_in->get_short());
-                        _state = STATE_TYPE;
-                        break;
-                    case 4:
-                        _listener->on_tag(_in->get_int());
-                        _state = STATE_TYPE;
-                        break;
-                    case 8:
-                        _listener->on_extra_tag(_in->get_long());
-                        _state = STATE_TYPE;
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_SPECIAL)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                switch (_currentLength)
-                {
-                    case 1:
-                        _listener->on_special(_in->get_byte());
-                        _state = STATE_TYPE;
-                        break;
-                    case 2:
-                        _listener->on_special(_in->get_short());
-                        _state = STATE_TYPE;
-                        break;
-                    case 4:
-                        _listener->on_float(_in->get_float());
-                        _state = STATE_TYPE;
-                        break;
-                    case 8:
-
-                        _listener->on_double(_in->get_double());
-                        _state = STATE_TYPE;
-                        break;
-                }
-            } else break;
-        } else if (_state == STATE_ERROR)
-        {
-            break;
-        } else
-        {
-            logger("UNKNOWN STATE");
-        }
-    }
-
-}
-
 void decoder::run()
 {
     unsigned int temp;
     while (1)
     {
-        if (_state == STATE_TYPE)
-        {
-            if (_in->has_bytes(1))
-            {
+        const auto expected_len = _state == STATE_TYPE ? 1 : _currentLength;
+        if (!_in->has_bytes(expected_len))
+            break;
+
+        switch (_state) {
+            case STATE_TYPE: {
                 unsigned char type = _in->get_byte();
                 unsigned char majorType = type >> 5;
-                unsigned char minorType = (unsigned char) (type & 31);
+                auto minorType = (unsigned char) (type & 31);
 
-                switch (majorType)
-                {
+                switch (majorType) {
                     case 0: // positive integer
                         if (minorType < 24)
                         {
@@ -565,12 +236,12 @@ void decoder::run()
                             _listener->on_error("invalid special type");
                         }
                         break;
+                    default:
+                        logger("unknown minor state in STATE_TYPE");
                 }
-            } else break;
-        } else if (_state == STATE_PINT)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_PINT: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -592,12 +263,13 @@ void decoder::run()
                     case 8:
                         _listener->on_extra_integer(_in->get_long(), 1);
                         break;
+                    default:
+                        logger("unknown minor state in STATE_PINT");
                 }
                 _state = STATE_TYPE;
-            } else break;
-        } else if (_state == STATE_NINT)
-        {
-            if (_in->has_bytes(_currentLength))
+                break;
+            }
+            case STATE_NINT:
             {
                 switch (_currentLength)
                 {
@@ -626,12 +298,12 @@ void decoder::run()
                     case 8:
                         _listener->on_extra_integer(_in->get_long(), -1);
                         break;
+                    default:
+                        logger("unknown minor state in STATE_NINT");
                 }
-            } else break;
-        } else if (_state == STATE_BYTES_SIZE)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_BYTES_SIZE: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -650,21 +322,19 @@ void decoder::run()
                         _state = STATE_ERROR;
                         _listener->on_error("extra long bytes");
                         break;
+                    default:
+                        logger("unknown minor state in STATE_BYTES_SIZE");
                 }
-            } else break;
-        } else if (_state == STATE_BYTES_DATA)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                unsigned char *data = new unsigned char[_currentLength];
+                break;
+            };
+            case STATE_BYTES_DATA: {
+                auto *data = new unsigned char[_currentLength];
                 _in->get_bytes(data, _currentLength);
                 _state = STATE_TYPE;
                 _listener->on_bytes(data, _currentLength);
-            } else break;
-        } else if (_state == STATE_STRING_SIZE)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_STRING_SIZE: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -683,22 +353,20 @@ void decoder::run()
                         _state = STATE_ERROR;
                         _listener->on_error("extra long array");
                         break;
+                    default:
+                        logger("unknown minor state in STATE_STRING_SIZE");
                 }
-            } else break;
-        } else if (_state == STATE_STRING_DATA)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
-                unsigned char *data = new unsigned char[_currentLength];
+                break;
+            }
+            case STATE_STRING_DATA: {
+                auto *data = new unsigned char[_currentLength];
                 _in->get_bytes(data, _currentLength);
                 _state = STATE_TYPE;
                 std::string str((const char *) data, (size_t) _currentLength);
                 _listener->on_string(str);
-            } else break;
-        } else if (_state == STATE_ARRAY)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_ARRAY: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -717,12 +385,12 @@ void decoder::run()
                         _state = STATE_ERROR;
                         _listener->on_error("extra long array");
                         break;
+                    default:
+                        logger("unknown minor state in STATE_ARRAY");
                 }
-            } else break;
-        } else if (_state == STATE_MAP)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_MAP: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -741,12 +409,12 @@ void decoder::run()
                         _state = STATE_ERROR;
                         _listener->on_error("extra long map");
                         break;
+                    default:
+                        logger("unknown minor state in STATE_MAP");
                 }
-            } else break;
-        } else if (_state == STATE_TAG)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_TAG: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -765,12 +433,12 @@ void decoder::run()
                         _listener->on_extra_tag(_in->get_long());
                         _state = STATE_TYPE;
                         break;
+                    default:
+                        logger("unknown minor state in STATE_TAG");
                 }
-            } else break;
-        } else if (_state == STATE_SPECIAL)
-        {
-            if (_in->has_bytes(_currentLength))
-            {
+                break;
+            }
+            case STATE_SPECIAL: {
                 switch (_currentLength)
                 {
                     case 1:
@@ -790,14 +458,16 @@ void decoder::run()
                         _listener->on_double(_in->get_double());
                         _state = STATE_TYPE;
                         break;
+                    default:
+                        logger("unknown minor state in STATE_SPECIAL");
                 }
-            } else break;
-        } else if (_state == STATE_ERROR)
-        {
-            break;
-        } else
-        {
-            logger("UNKNOWN STATE");
+                break;
+            }
+            case STATE_ERROR: {
+                break;
+            }
+            default:
+                logger("UNKNOWN STATE");
         }
     }
 }

@@ -114,7 +114,6 @@ namespace cbor {
         ~decoder();
         void run();
         void set_listener(listener &listener_instance);
-        void traverse();
 
         size_t offset() const { return _in->offset(); }
 
